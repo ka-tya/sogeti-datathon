@@ -58,7 +58,8 @@ top_prod <- top_products[which(top_products$PRODUCT_ID  %in% c('6534178','653388
 top_prod$unit_price <- (top_prod$SALES_VALUE -(top_prod$RETAIL_DISC))/top_prod$QUANTITY
 
 library(forecast)
-product_ts1<- ts(top_prod[which(top_prod$PRODUCT_ID =='6534178'),]$SALES_VALUE,frequency= 7)
+
+product_ts1<- as.xts(top_prod[which(top_prod$PRODUCT_ID =='6534178'),]$SALES_VALUE,frequency= 7)
 head(product_ts1, 5)
 plot(product_ts1)
 
@@ -79,3 +80,31 @@ plot(product_ts3)
 # decomposition of the data
 product_decomp3<- stl(product_ts3, s.window = "periodic")
 plot(product_decomp3)
+
+###FORECASTING
+#first brake data 80:20 training - testing
+prod_train <- window(product_ts3,start=1,end=100)
+
+pfitm  <- meanf(prod_train,h=28)
+pfitn  <- rwf(prod_train,h=28)
+pfitsn <- snaive(prod_train, h= 28)
+pfithw <- forecast.HoltWinters(HoltWinters(prod_train),h =28)
+pfitar <- forecast(auto.arima(prod_train), h = 28)
+
+plot(pfithw, col = 4, plot.conf=FALSE, main="Forecasts for OPS")
+lines(pfitm$mean, col = 6)
+lines(pfitn$mean,col=2)
+lines(pfitsn$mean,col=3)
+lines(pfitar$mean, col = 29)
+lines(product_ts3, col = 16)
+legend("bottomleft", lty=1, col=c(6,2,3,4,29,16),
+      legend=c("Mean method","Naive method","Seasonal naive method", "HoltWinters method","Arima method","Original data"),
+            ncol = 2, cex = .5)
+
+forecast_ts <- window(product_ts3, start=101)
+forecasting_accuracy<-data.frame(method =c("Mean method","Naive method","Seasonal naive method", "HoltWinters method","Arima method"),
+                                 RMSE = round(c(accuracy(pfitm, forecast_ts)[,2][2],accuracy(pfitn, forecast_ts)[,2][2], accuracy(pfitsn, forecast_ts)[,2][2], accuracy(pfithw, forecast_ts)[,2][2],accuracy(pfitar, forecast_ts)[,2][2]),2),
+                                 MAE = round(c(accuracy(pfitm, forecast_ts)[,3][2],accuracy(pfitn, forecast_ts)[,3][2], accuracy(pfitsn, forecast_ts)[,3][2], accuracy(pfithw, forecast_ts)[,3][2],accuracy(pfitar, forecast_ts)[,3][2]),2),
+                                 MAPE = round(c(accuracy(pfitm, forecast_ts)[,5][2],accuracy(pfitn, forecast_ts)[,5][2], accuracy(pfitsn, forecast_ts)[,5][2], accuracy(pfithw, forecast_ts)[,5][2],accuracy(pfitar, forecast_ts)[,5][2]),2)
+)
+forecasting_accuracy
